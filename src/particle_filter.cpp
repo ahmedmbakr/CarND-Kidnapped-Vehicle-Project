@@ -85,7 +85,20 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	//   observed measurement to this particular landmark.
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
-
+	
+  	//I assume that prediced is the landmark actual positions
+    for(int i = 0;i < observations.size();++i){
+      double min_ecl_dist = 999999999999;
+      for(LandmarkObs pred : predicted){
+        double x_diff = observations[i].x - pred.x;
+        double y_diff = observations[i].y - pred.y;
+        double ecl_dist = x_diff * x_diff + y_diff * y_diff ;
+        if(min_ecl_dist > ecl_dist){
+          min_ecl_dist = ecl_dist;
+          observations[i].id = pred.id;
+        }
+      }
+    }
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
@@ -102,7 +115,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   http://planning.cs.uiuc.edu/node99.html
   
   //I think that we need an outer loop to loop through the particles, and their index should be (p)
-  vector<int> associations;
+  /*vector<int> associations;
   vecotr<double> sense_x;
   vector<double> sense_y;
   
@@ -118,7 +131,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     trans_observations.push_back(trans_obs);
   }
   
-  particles[p].weight = 1.0;
+  particles[p].weight = 1.0;*/
   //to be completed
 }
 
