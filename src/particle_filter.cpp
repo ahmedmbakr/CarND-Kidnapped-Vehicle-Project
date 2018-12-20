@@ -29,8 +29,8 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
   std::default_random_engine gen;
   
   std::normal_distribution<double> N_x(x, std[0]);
-  std::normal_distribution<double> N_y(x, std[1]);
-  std::normal_distribution<double> N_theta(x, std[2]);
+  std::normal_distribution<double> N_y(y, std[1]);
+  std::normal_distribution<double> N_theta(theta, std[2]);
   
   for(int i = 0;i < num_particles; i++){
     Particle particle;
@@ -40,8 +40,8 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
     particle.theta = N_theta(gen);
     particle.weight = 1;
     
-    particles.push_back(particle);
-    weights.push_back(1);
+    this->particles.push_back(particle);
+    this->weights.push_back(1);
   }
   
   is_initialized = true;
@@ -100,6 +100,26 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
+  
+  //I think that we need an outer loop to loop through the particles, and their index should be (p)
+  vector<int> associations;
+  vecotr<double> sense_x;
+  vector<double> sense_y;
+  
+  vector<LandmarkObs> trans_observations;
+  LandmarkObs obs;
+  for (int i = 0; i < observations.size(); i++){
+    LandmarkObs trans_obs;
+    obs = observations[i];
+    
+    //perform the space transformation from vehicle to map
+    trans_obs.x = particles[p].x + (obs.x * cos(particles[p].theta) - obs.y * sin(partices[p].theta));
+    trans_obs.y = particles[i].y + (obs.x * sin(particles[p].theta) + obs.y * cos(partices[p].theta));
+    trans_observations.push_back(trans_obs);
+  }
+  
+  particles[p].weight = 1.0;
+  //to be completed
 }
 
 void ParticleFilter::resample() {
