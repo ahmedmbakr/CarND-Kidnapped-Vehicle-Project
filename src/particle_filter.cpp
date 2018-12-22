@@ -80,25 +80,26 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
   }
 }
 
-void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
+vector<int> ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
 	// TODO: Find the predicted measurement that is closest to each observed measurement and assign the 
 	//   observed measurement to this particular landmark.
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
 	
+  vector<int> associations;
   	//I assume that prediced is the landmark actual positions
     for(int i = 0;i < observations.size();++i){
+      associations.push_back(0);//init value
       double min_ecl_dist = 999999999999;
       for(LandmarkObs pred : predicted){
-        double x_diff = observations[i].x - pred.x;
-        double y_diff = observations[i].y - pred.y;
-        double ecl_dist = x_diff * x_diff + y_diff * y_diff ;
+        double ecl_dist = dist(observations[i].x, observations[i].y, pred.x, pred.y);
         if(min_ecl_dist > ecl_dist){
           min_ecl_dist = ecl_dist;
-          observations[i].id = pred.id;
+          associations[i] = pred.id;
         }
       }
     }
+  return associations;
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
@@ -113,26 +114,52 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
+  vector<LandmarkObs> landmarks;
   
-  //I think that we need an outer loop to loop through the particles, and their index should be (p)
-  /*vector<int> associations;
-  vecotr<double> sense_x;
-  vector<double> sense_y;
-  
-  vector<LandmarkObs> trans_observations;
-  LandmarkObs obs;
-  for (int i = 0; i < observations.size(); i++){
-    LandmarkObs trans_obs;
-    obs = observations[i];
-    
-    //perform the space transformation from vehicle to map
-    trans_obs.x = particles[p].x + (obs.x * cos(particles[p].theta) - obs.y * sin(partices[p].theta));
-    trans_obs.y = particles[i].y + (obs.x * sin(particles[p].theta) + obs.y * cos(partices[p].theta));
-    trans_observations.push_back(trans_obs);
+  for(Map::single_landmark_s a_single_landmark : map_landmarks.landmark_list){
+     LandmarkObs l;
+    l.x = a_single_landmark.x_f;
+    l.y = a_single_landmark.y_f;
+    l.id = a_single_landmark.id_i;
+    landmarks.push_back(l);
   }
-  
-  particles[p].weight = 1.0;*/
-  //to be completed
+  for(int p = 0;p < this->particles.size();++p){
+    vector<LandmarkObs> trans_observations;
+    for (LandmarkObs obs : observations){
+      LandmarkObs trans_obs;
+      if(dist(obs.x, obs.y, 0, 0) > sensor_range){
+        cout<<"distance is larger than sensor_range. Observation neglected.\n";
+        continue;
+      }
+      //perform the space transformation from vehicle to map
+      trans_obs.x = particles[p].x + (obs.x * cos(particles[p].theta) - obs.y * sin(particles[p].theta));
+      trans_obs.y = particles[p].y + (obs.x * sin(particles[p].theta) + obs.y * cos(particles[p].theta));
+      trans_observations.push_back(trans_obs);
+    }
+    vector<int> associations = dataAssociation(landmarks, trans_observations);
+    double weight = 1;
+    for(int i = 0;i < associations.size();++i){
+      double sig_x = std_landmark[0];
+      double sig_y = std_landmark[1];
+      double x = trans_observations[i].x;
+      double y = trans_observations[i].y;
+      double mu_x = landmarks[associations[i]].x;
+      double mu_y = landmarks[associations[i]].y;
+      weight *= getMultiVariateGaussian(sig_x, sig_y, x, mu_x, y, mu_y);
+        
+    }
+    particles[p].weight = weight;
+  }
+}
+
+double ParticleFilter::getMultiVariateGaussian(const double sig_x, const double sig_y,const double x, const double mu_x,
+			const double y, const double mu_y){
+  double const_val = 1 / (2 * M_PI * sig_x * sig_y);
+  double x_diff = x - mu_x;
+  double y_diff = y - mu_y;
+  double exp_pow = ((x_diff * x_diff) / (2 * sig_x * sig_x)) + ((y_diff * y_diff) / (2 * sig_y * sig_y));  
+  double res = const_val * exp(-exp_pow);
+  return res;
 }
 
 void ParticleFilter::resample() {

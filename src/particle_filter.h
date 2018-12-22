@@ -78,7 +78,7 @@ public:
 	 * @param predicted Vector of predicted landmark observations
 	 * @param observations Vector of landmark observations
 	 */
-	void dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations);
+	std::vector<int> dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations);
 	
 	/**
 	 * updateWeights Updates the weights for each particle based on the likelihood of the 
@@ -91,6 +91,9 @@ public:
 	void updateWeights(double sensor_range, double std_landmark[], const std::vector<LandmarkObs> &observations,
 			const Map &map_landmarks);
 	
+  	double getMultiVariateGaussian(const double sig_x, const double sig_y,const double x, const double mu_x,const double y, 
+			const double mu_y);
+  
 	/**
 	 * resample Resamples from the updated set of particles to form
 	 *   the new set of particles.
