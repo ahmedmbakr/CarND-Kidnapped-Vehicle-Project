@@ -123,6 +123,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
 double ParticleFilter::updateWeightForParticle(Particle& particle, double sensor_range, double std_landmark[], 
 		const std::vector<LandmarkObs> &observations, const Map &map_landmarks){
+  //////////////////////////get predictions and landmarks map.
   map<int, LandmarkObs> landmarks_map;
   vector<LandmarkObs> predictions;
   for(Map::single_landmark_s a_single_landmark : map_landmarks.landmark_list){
@@ -135,7 +136,8 @@ double ParticleFilter::updateWeightForParticle(Particle& particle, double sensor
     landmarks_map[l.id] = l;
     predictions.push_back(l);
   }
-
+	
+  //////////////////////////get transformed observations
   vector<LandmarkObs> trans_observations;
   vector<double> sense_x, sense_y;
   for (LandmarkObs obs : observations){
@@ -147,10 +149,13 @@ double ParticleFilter::updateWeightForParticle(Particle& particle, double sensor
     sense_y.push_back(trans_obs.y);
     trans_observations.push_back(trans_obs);
   }
+  
+  //////////////////////////associate transformed observations to landmarks.
   vector<int> associations = dataAssociation(predictions, trans_observations);
+  
+  //////////////////////////compute multi variate gaussian for this particle's weight.
   double weight = 1;
   for(int i = 0;i < associations.size();++i){
-    //cout<<"associations[i] = "<< associations[i]<<endl;
     double sig_x = std_landmark[0];
     double sig_y = std_landmark[1];
     double x = trans_observations[i].x;
@@ -158,8 +163,9 @@ double ParticleFilter::updateWeightForParticle(Particle& particle, double sensor
     double mu_x = landmarks_map[associations[i]].x;
     double mu_y = landmarks_map[associations[i]].y;
     weight *= getMultiVariateGaussian(sig_x, sig_y, x, mu_x, y, mu_y);
-
   }
+  
+  //////////////////////////set particle's data
   particle.weight = weight;
   particle.associations = associations;
   particle.sense_x = sense_x;
