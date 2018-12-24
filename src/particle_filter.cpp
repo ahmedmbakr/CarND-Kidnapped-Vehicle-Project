@@ -117,49 +117,54 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
   for(int p = 0;p < this->particles.size();++p){
-    map<int, LandmarkObs> landmarks_map;
-    vector<LandmarkObs> predictions;
-    for(Map::single_landmark_s a_single_landmark : map_landmarks.landmark_list){
-      if(dist(a_single_landmark.x_f, a_single_landmark.y_f, particles[p].x, particles[p].y) > sensor_range)
-        continue;
-      LandmarkObs l;
-      l.x = a_single_landmark.x_f /*- particles[p].x*/;
-      l.y = a_single_landmark.y_f /*- particles[p].y*/;
-      l.id = a_single_landmark.id_i;
-      landmarks_map[l.id] = l;
-      predictions.push_back(l);
-    }
-    
-    vector<LandmarkObs> trans_observations;
-    vector<double> sense_x, sense_y;
-    for (LandmarkObs obs : observations){
-      LandmarkObs trans_obs;
-      //perform the space transformation from vehicle to map
-      trans_obs.x = particles[p].x + (obs.x * cos(particles[p].theta) - obs.y * sin(particles[p].theta));
-      trans_obs.y = particles[p].y + (obs.x * sin(particles[p].theta) + obs.y * cos(particles[p].theta));
-      sense_x.push_back(trans_obs.x);
-      sense_y.push_back(trans_obs.y);
-      trans_observations.push_back(trans_obs);
-    }
-    vector<int> associations = dataAssociation(predictions, trans_observations);
-    double weight = 1;
-    for(int i = 0;i < associations.size();++i){
-      //cout<<"associations[i] = "<< associations[i]<<endl;
-      double sig_x = std_landmark[0];
-      double sig_y = std_landmark[1];
-      double x = trans_observations[i].x;
-      double y = trans_observations[i].y;
-      double mu_x = landmarks_map[associations[i]].x;
-      double mu_y = landmarks_map[associations[i]].y;
-      weight *= getMultiVariateGaussian(sig_x, sig_y, x, mu_x, y, mu_y);
-        
-    }
-    particles[p].weight = weight;
-    weights[p] = weight;
-    particles[p].associations = associations;
-    particles[p].sense_x = sense_x;
-    particles[p].sense_y = sense_y;
+    weights[p] = updateWeightForParticle(particles[p], sensor_range, std_landmark, observations, map_landmarks);  
   }
+}
+
+double ParticleFilter::updateWeightForParticle(Particle& particle, double sensor_range, double std_landmark[], 
+		const std::vector<LandmarkObs> &observations, const Map &map_landmarks){
+  map<int, LandmarkObs> landmarks_map;
+  vector<LandmarkObs> predictions;
+  for(Map::single_landmark_s a_single_landmark : map_landmarks.landmark_list){
+    if(dist(a_single_landmark.x_f, a_single_landmark.y_f, particle.x, particle.y) > sensor_range)
+      continue;
+    LandmarkObs l;
+    l.x = a_single_landmark.x_f;
+    l.y = a_single_landmark.y_f;
+    l.id = a_single_landmark.id_i;
+    landmarks_map[l.id] = l;
+    predictions.push_back(l);
+  }
+
+  vector<LandmarkObs> trans_observations;
+  vector<double> sense_x, sense_y;
+  for (LandmarkObs obs : observations){
+    LandmarkObs trans_obs;
+    //perform the space transformation from vehicle to map
+    trans_obs.x = particle.x + (obs.x * cos(particle.theta) - obs.y * sin(particle.theta));
+    trans_obs.y = particle.y + (obs.x * sin(particle.theta) + obs.y * cos(particle.theta));
+    sense_x.push_back(trans_obs.x);
+    sense_y.push_back(trans_obs.y);
+    trans_observations.push_back(trans_obs);
+  }
+  vector<int> associations = dataAssociation(predictions, trans_observations);
+  double weight = 1;
+  for(int i = 0;i < associations.size();++i){
+    //cout<<"associations[i] = "<< associations[i]<<endl;
+    double sig_x = std_landmark[0];
+    double sig_y = std_landmark[1];
+    double x = trans_observations[i].x;
+    double y = trans_observations[i].y;
+    double mu_x = landmarks_map[associations[i]].x;
+    double mu_y = landmarks_map[associations[i]].y;
+    weight *= getMultiVariateGaussian(sig_x, sig_y, x, mu_x, y, mu_y);
+
+  }
+  particle.weight = weight;
+  particle.associations = associations;
+  particle.sense_x = sense_x;
+  particle.sense_y = sense_y;
+  return weight;
 }
 
 double ParticleFilter::getMultiVariateGaussian(const double sig_x, const double sig_y,const double x, const double mu_x,

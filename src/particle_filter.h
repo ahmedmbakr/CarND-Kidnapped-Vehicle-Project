@@ -90,6 +90,9 @@ public:
 	 */
 	void updateWeights(double sensor_range, double std_landmark[], const std::vector<LandmarkObs> &observations,
 			const Map &map_landmarks);
+  
+  	double updateWeightForParticle(Particle& particle,double sensor_range, double std_landmark[], 
+		const std::vector<LandmarkObs> &observations, const Map &map_landmarks);
 	
   	double getMultiVariateGaussian(const double sig_x, const double sig_y,const double x, const double mu_x,const double y, 
 			const double mu_y);
