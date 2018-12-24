@@ -1,27 +1,28 @@
 /*
  * particle_filter.cpp
  *
- *  Created on: Dec 12, 2016
- *      Author: Tiffany Huang
  */
 
 #include <random>
 #include <algorithm>
 #include <iostream>
 #include <numeric>
+#include <map>
+
 #include <math.h> 
-#include <iostream>
 #include <sstream>
 #include <string>
 #include <iterator>
 #include <map>
 
 #include "particle_filter.h"
-
 using namespace std;
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
-	// TODO: Set the number of particles. Initialize all particles to first position (based on estimates of 
+	// Sets the number of particles. Initializes all particles to first position (based on estimates of
+  // x, y, theta and their uncertainties from GPS) and all weights to 1.
+	// Adds random Gaussian noise to each particle.
+  	// TODO: Set the number of particles. Initialize all particles to first position (based on estimates of 
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
@@ -49,26 +50,25 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
-	// TODO: Add measurements to each particle and add random Gaussian noise.
+		// TODO: Add measurements to each particle and add random Gaussian noise.
 	// NOTE: When adding noise you may find std::normal_distribution and std::default_random_engine useful.
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
-	default_random_engine gen;
+  	default_random_engine gen;
   //cout<<"velocity: "<< velocity<<endl;
   //cout<<"yaw rate: "<< yaw_rate<<endl;
   for(int i  = 0; i < num_particles; i++){
     double new_x;
     double new_y;
     double new_theta;
-    
-    if(yaw_rate ==0){
+    if(yaw_rate == 0){
       new_x = particles[i].x + velocity * delta_t * cos(particles[i].theta);
       new_y = particles[i].y + velocity * delta_t * sin(particles[i].theta);
       new_theta = particles[i].theta;
     }
     else{
       new_x = particles[i].x + velocity / yaw_rate * (sin(particles[i].theta + yaw_rate * delta_t) - sin(particles[i].theta)); 
-      new_x = particles[i].y + velocity / yaw_rate * (cos(particles[i].theta) - cos(particles[i].theta + yaw_rate * delta_t)); 
+      new_y = particles[i].y + velocity / yaw_rate * (cos(particles[i].theta) - cos(particles[i].theta + yaw_rate * delta_t)); 
       new_theta = particles[i].theta + yaw_rate * delta_t;
     }
     
@@ -76,15 +76,9 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
     std::normal_distribution<double> N_y(new_y, std_pos[1]);
     std::normal_distribution<double> N_theta(new_theta, std_pos[2]);
     
-    cout<<"old x: "<< particles[i].x<<endl;
-    cout<<"old y: "<< particles[i].y<<endl;
-    cout<<"old theta: "<< particles[i].theta<<endl;
     particles[i].x = N_x(gen);
     particles[i].y = N_y(gen);
     particles[i].theta = N_theta(gen);
-    cout<<"new x: "<< particles[i].x<<endl;
-    cout<<"new y: "<< particles[i].y<<endl;
-    cout<<"new theta: "<< particles[i].theta<<endl;
   }
 }
 
@@ -97,8 +91,8 @@ vector<int> ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, 
   vector<int> associations;
   	//I assume that prediced is the landmark actual positions
   for(int i = 0;i < observations.size();++i){
-      associations.push_back(0);//init value
-      double min_ecl_dist = 999999999999;
+      associations.push_back(-1);//init value
+      double min_ecl_dist = 999999;
       for(LandmarkObs pred : predicted){
         double ecl_dist = dist(observations[i].x, observations[i].y, pred.x, pred.y);
         if(min_ecl_dist > ecl_dist){
@@ -161,6 +155,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         
     }
     particles[p].weight = weight;
+    weights[p] = weight;
     particles[p].associations = associations;
     particles[p].sense_x = sense_x;
     particles[p].sense_y = sense_y;
@@ -193,7 +188,7 @@ void ParticleFilter::resample() {
 Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<int>& associations, 
                                      const std::vector<double>& sense_x, const std::vector<double>& sense_y)
 {
-    //particle: the particle to assign each listed association, and association's (x,y) world coordinates mapping to
+    // particle: the particle to assign each listed association, and association's (x,y) world coordinates mapping to
     // associations: The landmark id that goes along with each listed association
     // sense_x: the associations x mapping already converted to world coordinates
     // sense_y: the associations y mapping already converted to world coordinates
